@@ -28,6 +28,6 @@ Route::get('/logout',[AuthController::class,'logout']);
 Route::middleware('auth:sanctum')->post('/createwallet',[WalletController::class,'createWallet']);
 Route::middleware('auth:sanctum')->post('/stock',[WalletController::class,'stock']);
 Route::middleware('auth:sanctum')->post('/send',[TransactionController::class,'sendMoney']);
-Route::middleware('auth:sanctum')->post('/usertransaction',[TransactionController::class,'userTransaction']);
-Route::middleware('auth:sanctum')->post('/admintransaction',[TransactionController::class,'adminTransaction']);
+Route::middleware('auth:sanctum')->get('/usertransaction',[TransactionController::class,'userTransaction']);
+Route::middleware('auth:sanctum')->get('/admintransaction',[TransactionController::class,'adminTransaction']);
 
