@@ -4,61 +4,103 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Models\User;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class TransactionController extends Controller
 {
     public function sendMoney(Request $request)
-    {
-        $request->validate([
-            'montant' => 'required|numeric|min:0',
-            'receiver' => 'required|exists:users,id',
-        ]);
+{
+    $request->validate([
+        'name' => 'required|string',
+        'type' => 'required|string',
+        'montant' => 'required',
+    ]);
 
-        $user = Auth::user();
-        $montant = $request->input('montant');
-        $receiverId = $request->input('receiver');
+    try {
+        $receiver = User::where('name', $request->input('name'))->first();
 
-        if (!$user->wallet) {
-            return response()->json(['message' => 'Utilisateur sans wallet'], 404);
+        if ($receiver === NULL) {
+            return response()->json([
+                'message' => 'User Not Found!'
+            ], 401);
         }
 
-        if ($user->wallet->balance < $montant) {
-            return response()->json(['message' => 'Solde insuffisant'], 403);
+        $wallet = Wallet::where('user_id', $receiver->id)
+            ->where('type', $request->input('type'))
+            ->first();
+
+        if ($wallet === NULL) {
+            return response()->json([
+                'message' => 'Reciever does not have the same type of wallet!'
+            ], 401);
         }
 
-        $transaction = new Transaction([
-            'user_id' => $user->id,
-            'montant' => $montant,
-            'receiver' => $receiverId,
+
+        $sender_id = Auth::id();
+
+        $balance = Wallet::where('user_id', $sender_id)
+            ->where('type', $request->input('type'))
+            ->value('balance');
+
+        if ($balance < $request->input('montant')) {
+            return response()->json([
+                'message' => 'Insufficient Balance'
+            ], 401);
+        }
+
+        Transaction::create([
+            'sender' => $sender_id,
+            'montant' => $request->input('montant'),
+            'receiver' => $receiver->id
         ]);
-        $transaction->save();
 
-        $user->wallet->decrement('balance', $montant);
+        $senderBalance = $balance - $request->input('montant');
 
-        $receiver = User::findOrFail($receiverId);
-        $receiver->wallet->increment('balance', $montant);
+        Wallet::where('user_id', $sender_id)
+            ->where('type', $request->input('type'))
+            ->update(['balance' => $senderBalance]);
 
-        return response()->json(['message' => 'Transaction effectuée avec succès'], 200);
+        $receiverBalance = $balance + $request->input('montant');
+
+        Wallet::where('user_id', $receiver->id)
+            ->where('type', $request->input('type'))
+            ->update(['balance' => $receiverBalance]);
+
+        return response()->json([
+            'message' => 'montant sent successfully',
+        ], 201);
+    } catch (\Exception $e) {
+        return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
     }
-
-    public function userTransactions()
+}
+    public function userTransactions(Request $request)
     {
+        $type = $request->input('type');
         $user = Auth::user();
-        $transactions = Transaction::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        $transactions = Transaction::where('type', $type)
+            ->where('sender', $user->id)
+            ->orWhere('receiver', $user->id)
+            ->orderByDesc('created_at')
+            ->get();
 
         return response()->json(['transactions' => $transactions], 200);
     }
 
-    public function adminTransactions()
+    public function adminTransactions(Request $request)
     {
+        $type = $request->input('type');
         if (Auth::user()->role_id !== 1) {
-            return response()->json(['message' => 'Non autorisé'], 403);
+            return response()->json(['message' => 'Vous n\'êtes pas autorisé'], 403);
         }
 
-        $transactions = Transaction::with(['user', 'receiver'])->orderByDesc('created_at')->get();
+        $transactions = Transaction::where('type', $type)
+            ->with(['sender', 'receiver'])
+            ->orderByDesc('created_at')
+            ->get();
 
         return response()->json(['transactions' => $transactions], 200);
     }
 }
+

@@ -27,7 +27,7 @@ class AuthController extends Controller
               'name' => $user['name'],
               'email' => $user['email'],
               'password' => $hashedPwd,
-              'role_id' => 1,
+              'role_id' => 2,
 
             ]);
 

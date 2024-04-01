@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('transactions', function (Blueprint $table) {
             $table->id();
             $table->decimal('montant');
+            $table->unsignedBigInteger('sender');
+            $table->foreign('sender')->references('id')->on('users');
             $table->unsignedBigInteger('receiver');
             $table->foreign('receiver')->references('id')->on('users');
             $table->timestamps();
