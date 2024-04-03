@@ -23,7 +23,7 @@ class TransactionController extends Controller
 
         if ($receiver === NULL) {
             return response()->json([
-                'message' => 'User Not Found!'
+                'message' => 'user not found'
             ], 401);
         }
 
@@ -39,10 +39,11 @@ class TransactionController extends Controller
 
 
         $sender_id = Auth::id();
-
+        // dd($sender_id);
         $balance = Wallet::where('user_id', $sender_id)
             ->where('type', $request->input('type'))
             ->value('balance');
+            // dd($balance);
 
         if ($balance < $request->input('montant')) {
             return response()->json([
@@ -53,7 +54,7 @@ class TransactionController extends Controller
         Transaction::create([
             'sender' => $sender_id,
             'montant' => $request->input('montant'),
-            'receiver' => $receiver->id
+            'receiver' => $receiver->id,
         ]);
 
         $senderBalance = $balance - $request->input('montant');
@@ -77,7 +78,8 @@ class TransactionController extends Controller
 }
     public function userTransactions(Request $request)
     {
-        $type = $request->input('type');
+        $type = wallet::where('type', $request->input('type'))->first();
+        // dd($type);
         $user = Auth::user();
         $transactions = Transaction::where('type', $type)
             ->where('sender', $user->id)
@@ -99,7 +101,7 @@ class TransactionController extends Controller
             ->with(['sender', 'receiver'])
             ->orderByDesc('created_at')
             ->get();
-            dd($transactions);
+            // dd($transactions);
 
         return response()->json(['transactions' => $transactions], 200);
     }

@@ -52,7 +52,8 @@ class WalletController extends Controller
             'balance' => $wallet->balance,
             'uuid' => $this->getUuid($wallet->id)
         ], 201);
-    } catch (\Exception $e) {
+    }
+    catch (\Exception $e) {
         return response()->json([
             'error' => 'erreur lors d la creation du wallet: ' . $e->getMessage()
         ], 500);
@@ -79,46 +80,13 @@ class WalletController extends Controller
                 'message' => 'balance ajouté avec succès',
                 'new balance' => $wallet->balance,
             ], 201);
-        } catch (\Exception $e) {
+        }
+        catch (\Exception $e) {
             return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
 
     
-
-    public function sendMoney(Request $request){
-
-       $data = $request->validate([
-            'sender_id' => 'required|exists:users,id',
-            'montant' => 'required|numeric|min:0',
-        ]);
-
-        $user = auth()->user();
-        $recipient = User::findOrFail($data['sender_id']);
-        $montant = $data['montant'];
-
-        $senderWallet = $user->wallet;
-        $recipientWallet = $recipient->wallet;
-
-        if ($senderWallet && $recipientWallet && $senderWallet->balance >= $montant) {
-            $senderWallet->balance -= $montant;
-            $senderWallet->save();
-
-            $recipientWallet->balance += $montant;
-            $recipientWallet->save();
-
-            return response()->json(['message' => 'moneyyyy sent successfully']);
-        } else {
-            return response()->json(['error' => 'invalid transaction or insufficient balance'], 400);
-        }
-    }
-
-
-
-
-
-
-
     /**
      * Display a listing of the resource.
      */
