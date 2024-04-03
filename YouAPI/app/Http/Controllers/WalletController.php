@@ -7,39 +7,84 @@ use App\Models\User;
 use App\Http\Requests\StoreWalletRequest;
 use App\Http\Requests\UpdateWalletRequest;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 
 
 class WalletController extends Controller
 {
+    public function getUuid($id){
+        $query = DB::table('wallets')
+    ->where('id', $id)
+    ->select(DB::raw('CAST(id AS CHAR) AS id'))
+    ->first();
+        return $query->id;
+    }
 
-    public function stock(Request $request) {
+    public function createWallet(Request $request)
+{
+    try {
         $request->validate([
-            'montant' => 'required|numeric|min:0',
-            'motif' => 'required|string',
+            'type' => 'required|string|max:134',
+            'balance' => 'required',
         ]);
 
-        if (auth()->check()) {
-            $user = auth()->user();
+        $wallet = Wallet::where('type', $request->input('type'))
+            ->where('user_id', Auth::id())
+            ->first();
 
-            if ($user->wallet) {
-                $montant = $request->input('montant');
-                $motif = $request->input('motif');
+        if ($wallet !== null) {
+            return response()->json([
+                'message' => 'type de compte deja existant'
+            ], 401);
+        }
 
-                $wallet = $user->wallet;
-                $wallet->balance += $montant;
-                $wallet->save();
+        $wallet = Wallet::create([
+            'id' => Str::uuid(),
+            'type' => $request->input('type'),
+            'user_id' => Auth::id(),
+            'balance' => $request->input('balance')
+        ]);
 
+        return response()->json([
+            'message' => 'Wallet créé avec succès',
+            'balance' => $wallet->balance,
+            'uuid' => $this->getUuid($wallet->id)
+        ], 201);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'erreur lors d la creation du wallet: ' . $e->getMessage()
+        ], 500);
+    }
+}
+    public function Stock(Request $request) {
+        try {
+            $request->validate([
+                'type' => 'required|string|max:123',
+                'balance' => 'required',
+            ]);
+
+            $wallet = Wallet::where('type', $request->input('type'))->where('user_id', Auth::id())->first();
+            if ($wallet == NULL) {
                 return response()->json([
-                    'message' => 'montant added successfully',
-                    'newBalance' => $wallet->balance,
-                ]);
-            } else {
-                return response()->json(['error' => 'user does not have a wallet'], 404);
+                    'message' => 'wallet n exist pas',
+                ], 401);
             }
-        } else {
-            return response()->json(['error' => 'user not authenticated'], 401);
+
+            $wallet->balance = $wallet->balance + $request->input('balance');
+            $wallet->save();
+
+            return response()->json([
+                'message' => 'balance ajouté avec succès',
+                'new balance' => $wallet->balance,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Error: ' . $e->getMessage()], 500);
         }
     }
+
+    
 
     public function sendMoney(Request $request){
 

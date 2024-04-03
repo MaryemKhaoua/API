@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\Wallet;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Ramsey\Uuid\Uuid;
@@ -12,6 +13,13 @@ use Ramsey\Uuid\Uuid;
 
 class AuthController extends Controller
 {
+    public function getUuid($id){
+        $query = DB::table('wallets')
+    ->where('id', $id)
+    ->select(DB::raw('CAST(id AS CHAR) AS id'))
+    ->first();
+        return $query->id;
+    }
 
     public function register(Request $request){
         try {
@@ -40,13 +48,14 @@ class AuthController extends Controller
                 'type' => 'standard',
               ]);
 
+
               $tokenResult = $user->createToken('Personal Access Token');
               $token = $tokenResult->plainTextToken;
-
+              $uuid = $this->getUuid($wallet->id);
               return response()->json([
                 'message' => 'user created successfully',
-                'uuid' => Uuid::fromBytes($wallet->id)->toString(),
-                'wallet' => $wallet,
+                'uuid' => $uuid,
+                'balance' => $wallet->balance,
                 'accessToken'=> $token,], 201);
             }
 

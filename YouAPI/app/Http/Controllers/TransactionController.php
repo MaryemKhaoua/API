@@ -99,6 +99,7 @@ class TransactionController extends Controller
             ->with(['sender', 'receiver'])
             ->orderByDesc('created_at')
             ->get();
+            dd($transactions);
 
         return response()->json(['transactions' => $transactions], 200);
     }
